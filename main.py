@@ -11,22 +11,25 @@ client = InferenceClient(token=HUGGINGFACE_TOKEN)
 
 # Function to extract transcript
 def get_transcript(video_url):
-    video_id = re.search(
-        r'(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})',
-        video_url)
+    # Extract video ID (works for all URL formats)
+    video_id = re.search(r'(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})', video_url)
     if not video_id:
         raise ValueError("Invalid YouTube URL")
     video_id = video_id.group(1)
-
+    
     try:
+        # Try fetching en-US captions first (common for manually created captions)
         transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en-US'])
+        return " ".join([entry['text'] for entry in transcript]) # Limit length
     except:
         try:
+            # Fallback to auto-generated English if en-US fails
             transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+            return " ".join([entry['text'] for entry in transcript])
         except Exception as e:
+            print(f"Error: No English transcript available for video {video_id}")
+            print("Available languages:", YouTubeTranscriptApi.list_transcripts(video_id))
             return None
-
-    return " ".join([entry['text'] for entry in transcript])
 
 # Streamlit App
 st.title("🎥 YouTube to Blog Generator")
